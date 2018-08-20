@@ -61,6 +61,7 @@ If you have a comment or suggestion, please open an [issue](https://github.com/d
     4.5d [Copy public key to server](#45d-copy-public-key-to-server)  
     4.5e [Connect with public key authentication](#45e-connect-with-public-key-authentication)  
     4.5f [(Optional) Import SSH Keys to `gpg-agent`](#45f-optional-import-ssh-keys-to-gpg-agent)  
+    4.5g [(Optional) GPG Agent Forwarding](#45g-optional-gpg-agent-forwarding)  
   4.6 [SSH - Windows](#46-ssh---windows)  
     4.6a [GitHub](#46a-github)  
   4.7 [Requiring touch to authenticate](#47-requiring-touch-to-authenticate)  
@@ -1314,6 +1315,38 @@ Or to show the keys with MD5 fingerprints, as used by `gpg-connect-agent`'s `KEY
 
 When using the key `pinentry` will be invoked to request the key's passphrase. The passphrase will be cached for up to 10 minutes idle time between uses, to a maximum of 2 hours.
 
+### 4.5g (Optional) GPG Agent Forwarding
+
+If you are working on a remote machine, you might wish to sign something, for example a git commit, using the keys on your Yubikey.  To do so, you need to configure your ssh session to forward your GPG agent.
+
+Find out where the extra socket of the GPG agent is on your local system:
+
+    $ gpgconf --list-dirs agent-extra-socket
+    /run/user/1000/gnupg/S.gpg-agent.extra
+
+Find out where the agent socket is on the remote system:
+
+    $ gpgconf --list-dirs agent-socket
+    /run/user/1000/gnupg/S.gpg-agent
+
+Edit the SSH configuration in ~/.ssh/config on the local machine to forward the socket to the remote machine:
+
+    Host remote
+      RemoteForward <remote socket> <local socket>
+
+The public key suitable for the YubiKey must also be present on the target system. For simplicity, we can copy the local collection of public keys to the remote machine: 
+
+    scp .gnupg/pubring.kbx remote:~/.gnupg/
+    
+On the target machine, activate the GPG agent: 
+ 
+    echo use-agent >> ~/.gnupg/gpg.conf
+    
+Add the following configuration parameter to your SSH server configuration (/etc/ssh/sshd_config): 
+    
+    StreamLocalBindUnlink yes
+    
+Now log out and log back in. From now on it should be possible to create signatures etc. with the private key of the YubiKey.
 ## 4.6 SSH - Windows
 
 Begin by exporting your SSH key from GPG:
@@ -1427,3 +1460,4 @@ The Yubikey has two configurations, one invoked with a short press, and the othe
 * https://alexcabal.com/creating-the-perfect-gpg-keypair/
 * https://www.void.gr/kargig/blog/2013/12/02/creating-a-new-gpg-key-with-subkeys/
 * https://evilmartians.com/chronicles/stick-with-security-yubikey-ssh-gnupg-macos
+* https://mlohr.com/gpg-agent-forwarding/
